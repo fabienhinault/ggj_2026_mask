@@ -1,0 +1,14 @@
+
+#sickCount {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: yellow;
+}
+
+#maskedCount {
+    position: absolute;
+    top: 40px;
+    left: 10px;
+    color: red;
+}

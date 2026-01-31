@@ -26,6 +26,7 @@ function randomDir()
 
 function Character(x, y, div) {
     this.sick = false;
+    this.masked = false;
     this.m_Dir = randomDir();
     this.last_x = x;
     this.last_y = y;
@@ -63,18 +64,36 @@ Character.prototype.isOut = function() {
 };
 
 Character.prototype.setSick = function(sick) {
-    this.sick = sick;
-    let background;
-    if (sick) {
-        background = 'rgb(255, 0, 0)';
-    } else {
-        background = 'rgb(255, 255, 255)';
+    if (this.sick && !sick) {
+        g_sickCount--;
+        g_divSickCount.innerHTML = g_sickCount;
+    } else if (!this.sick && sick) {
+        g_sickCount++;
+        g_divSickCount.innerHTML = g_sickCount;
     }
-    this.m_div.style.background = background;
+    this.sick = sick;
+    if (!this.masked) {
+        let background;
+        if (sick) {
+            background = g_colorSick;
+        } else {
+            background = g_colorSane;
+        }
+        this.m_div.style.background = background;
+    }
+};
+
+Character.prototype.setMasked = function() {
+    this.masked = true;
+    this.m_div.style.background = g_colorMasked;
 };
 
 Character.prototype.isNear = function(other) {
-    return Math.abs(this.m_x - other.m_x) < g_max_distance && Math.abs(this.m_y - other.m_y) < g_max_distance;
+    return this.isNearPosition(other.m_x, other.m_y, g_max_distance_contamination);
+};
+
+Character.prototype.isNearPosition = function(x, y, distance) {
+    return Math.abs(this.m_x - x) < distance && Math.abs(this.m_y - y) < distance;
 };
 
 Character.prototype.reenter = function() {
@@ -112,7 +131,11 @@ const g_delay = 40;
 let dart;
 const g_speed_min = 20/1000;
 const g_speed_max = 2 * g_speed_min;
-const g_max_distance = 15;
+const g_max_distance_contamination = 15;
+const g_distance_mask = 30;
+const g_colorSane = 'gray';
+const g_colorSick = 'yellow';
+const g_colorMasked = 'red';
 
 function findPos(obj) {
     var curleft = curtop = 0;
@@ -125,9 +148,21 @@ function findPos(obj) {
     return [curleft,curtop];
 }
 
+function mask(event) {
+    for (character of g_characters) {
+        if (character.isNearPosition(event.clientX, event.clientY, g_distance_mask)) {
+            character.setMasked();
+        }
+    }
+}
+
 function start()
 {
+    g_audioTheme1 = document.getElementById("audio_theme1");
+    g_audioTheme1.play();
     g_Div = document.getElementById("bigdiv");
+    g_divSickCount = document.getElementById("sickCount");
+    g_sickCount = 1;
     g_nHeightDiv = g_Div.clientHeight;
     g_nWidthDiv = g_Div.clientWidth;
     g_perimeterLength = 2 * g_nHeightDiv + 2 * g_nWidthDiv;
@@ -135,11 +170,12 @@ function start()
     g_nLeftDiv = g_posDiv[0];
     g_nTopDiv = g_posDiv[1];
     
-    
     restart();
     
     g_handlerTimeout = setTimeout("update();", g_delay);
     g_timeLastMove = (new Date()).getTime();
+
+    g_Div.addEventListener('click', mask);
 }
 
 function removeAll(cell) {
@@ -177,7 +213,7 @@ function createCharacter(x, y) {
 
 function createLittleDiv(x, y) {
     var littleDiv = document.createElement('div');
-    littleDiv.style.background = 'rgb(255, 255, 255)';
+    littleDiv.style.background = g_colorSane;
     littleDiv.style.width = '1px';
     littleDiv.style.height = '1px';
     littleDiv.style.left = x - .5 + 'px';;
@@ -203,15 +239,17 @@ function update()
     g_characters[iCharacter].draw();
   }
   for (character of g_characters) {
-    if (character.sick) {
+    if (character.sick && !character.masked) {
         for (otherCharacter of g_characters) {
-            if (character != otherCharacter && !otherCharacter.sick && character.isNear(otherCharacter)) {
+            if (character != otherCharacter && !otherCharacter.sick && 
+                    character.isNear(otherCharacter) && !character.masked) {
                 otherCharacter.setSick(true);
             }
         }
     }
   }
 }
+
 
 function addDart(evt) {
     g_characters.push(dart);
