@@ -25,6 +25,7 @@ function randomDir()
 }
 
 function Character(x, y, div) {
+    this.sick = false;
     this.m_Dir = randomDir();
     this.last_x = x;
     this.last_y = y;
@@ -55,20 +56,63 @@ g_nHeightDiv = 0;
 g_nLeftDiv = 0;
 g_nTopDiv = 0;
 
-Character.prototype.isOut = function()
-{
+Character.prototype.isOut = function() {
     var out =  (this.m_x < g_nLeftDiv || this.m_x > g_nLeftDiv + g_nWidthDiv ||
             this.m_y < g_nTopDiv || this.m_y > g_nTopDiv + g_nHeightDiv);
     return out;
 };
+
+Character.prototype.setSick = function(sick) {
+    this.sick = sick;
+    let background;
+    if (sick) {
+        background = 'rgb(255, 0, 0)';
+    } else {
+        background = 'rgb(255, 255, 255)';
+    }
+    this.m_div.style.background = background;
+};
+
+Character.prototype.isNear = function(other) {
+    return Math.abs(this.m_x - other.m_x) < g_max_distance && Math.abs(this.m_y - other.m_y) < g_max_distance;
+};
+
+Character.prototype.reenter = function() {
+    let dir;
+    let r = Math.random() * g_perimeterLength;
+    if (r < g_nHeightDiv) {
+        this.m_x = 1;
+        this.m_y = r;
+        dir = 0;
+    } else if (r < 2 * g_nHeightDiv) {
+        this.m_x = g_nWidthDiv - 1;
+        this.m_y = r - g_nHeightDiv;
+        dir = Math.PI;
+    } else if (r < 2 * g_nHeightDiv + g_nWidthDiv) {
+        this.m_x = r - 2 * g_nHeightDiv;
+        this.m_y = 1;
+        dir = Math.PI / 2;
+    } else {
+        this.m_x = r - (2 * g_nHeightDiv + g_nWidthDiv);
+        this.m_y = g_nHeightDiv - 1;
+        dir = -Math.PI / 2;
+    }
+    let angle = dir + Math.random() * Math.PI;
+    this.m_Dir = new Array(Math.cos(angle), Math.sin(angle));
+    let speed = g_speed_min + Math.random() * (g_speed_max - g_speed_min);
+    this.speed_x = this.m_Dir[0] * speed;
+    this.speed_y = this.m_Dir[1] * speed;
+    this.setSick(false);
+}
 
 let g_characters = new Array();
 let g_handlerTimeout = 0;
 let g_timeLastMove = 0;
 const g_delay = 40;
 let dart;
-const g_speed_min = 35/1000;
+const g_speed_min = 20/1000;
 const g_speed_max = 2 * g_speed_min;
+const g_max_distance = 15;
 
 function findPos(obj) {
     var curleft = curtop = 0;
@@ -86,6 +130,7 @@ function start()
     g_Div = document.getElementById("bigdiv");
     g_nHeightDiv = g_Div.clientHeight;
     g_nWidthDiv = g_Div.clientWidth;
+    g_perimeterLength = 2 * g_nHeightDiv + 2 * g_nWidthDiv;
     g_posDiv = findPos(g_Div);
     g_nLeftDiv = g_posDiv[0];
     g_nTopDiv = g_posDiv[1];
@@ -107,11 +152,19 @@ function removeAll(cell) {
     }
 }
 
+function createRandomCharacter() {
+    let x = g_nLeftDiv + g_nWidthDiv * Math.random();
+    let y = g_nTopDiv + g_nHeightDiv * Math.random();
+    return createCharacter(x, y);
+}
+
 function restart() {
     removeAll(g_Div);
-    const v = 0.03; //0.04 for a circle
-    createCharacter( g_nLeftDiv + g_nWidthDiv * 0.5, g_nTopDiv + g_nHeightDiv * 0.25, v, 0); 
-    createCharacter( g_nLeftDiv + g_nWidthDiv * 0.5, g_nTopDiv + g_nHeightDiv * 0.75, -v, 0); 
+    let patient0 = createRandomCharacter();
+    patient0.setSick(true);
+    for (let iCharacter = 0; iCharacter < 911; iCharacter++) {
+        createRandomCharacter();
+    }
 }
 
 function createCharacter(x, y) {
@@ -119,6 +172,7 @@ function createCharacter(x, y) {
     let character = new Character(x, y, div);
     g_characters.push(character);
     g_Div.appendChild(div);
+    return character;
 }
 
 function createLittleDiv(x, y) {
@@ -142,12 +196,20 @@ function update()
   for(iCharacter = 0; iCharacter < g_characters.length; iCharacter++) {
     g_characters[iCharacter].move(elapsedTime);
     if (g_characters[iCharacter].isOut()) {
-        g_Div.removeChild(g_characters[iCharacter].m_div);
+        g_characters[iCharacter].reenter();
     }
   }
-  g_characters = g_characters.filter(ch => !ch.isOut());
   for(iCharacter = 0; iCharacter < g_characters.length; iCharacter++) {
     g_characters[iCharacter].draw();
+  }
+  for (character of g_characters) {
+    if (character.sick) {
+        for (otherCharacter of g_characters) {
+            if (character != otherCharacter && !otherCharacter.sick && character.isNear(otherCharacter)) {
+                otherCharacter.setSick(true);
+            }
+        }
+    }
   }
 }
 
