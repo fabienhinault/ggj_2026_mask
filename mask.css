@@ -6,9 +6,23 @@
     color: yellow;
 }
 
-#maskedCount {
+#sickMaskedCount {
     position: absolute;
     top: 40px;
     left: 10px;
+    color: orange
+}
+
+#saneMaskedCount {
+    position: absolute;
+    top: 70px;
+    left: 10px;
     color: red;
+}
+
+#saneCount {
+    position: absolute;
+    top: 100px;
+    left: 10px;
+    color: gray;
 }

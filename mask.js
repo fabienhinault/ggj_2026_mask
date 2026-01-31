@@ -32,7 +32,7 @@ function Character(x, y, div) {
     this.last_y = y;
     this.m_x = x;
     this.m_y = y;
-    let speed = g_speed_min + Math.random() * (g_speed_max - g_speed_min);
+    let speed = g_speed_min + Math.random() * (g_speed_max - g_speed_min); // 0; // 
     this.speed_x = this.m_Dir[0] * speed;
     this.speed_y = this.m_Dir[1] * speed;
     this.m_div = div;
@@ -63,29 +63,83 @@ Character.prototype.isOut = function() {
     return out;
 };
 
-Character.prototype.setSick = function(sick) {
-    if (this.sick && !sick) {
-        g_sickCount--;
-        g_divSickCount.innerHTML = g_sickCount;
-    } else if (!this.sick && sick) {
-        g_sickCount++;
-        g_divSickCount.innerHTML = g_sickCount;
-    }
-    this.sick = sick;
+Character.prototype.updateColor = function() {
+    let background;
     if (!this.masked) {
-        let background;
-        if (sick) {
+        if (this.sick) {
             background = g_colorSick;
         } else {
             background = g_colorSane;
         }
-        this.m_div.style.background = background;
+    } else {
+        if (this.sick) {
+            background = g_colorSickMasked;
+        } else {
+            background = g_colorSaneMasked;
+        }
     }
+    this.m_div.style.background = background;
 };
 
-Character.prototype.setMasked = function() {
-    this.masked = true;
-    this.m_div.style.background = g_colorMasked;
+Character.prototype.setSick = function(sick) {
+    if (!this.masked) {
+        if (this.sick && !sick) {
+            g_sickCount--;
+            g_saneCount++;
+            g_divSickCount.innerHTML = g_sickCount;
+            g_divSaneCount.innerHTML = g_saneCount;
+        } else if (!this.sick && sick) {
+            g_sickCount++;
+            g_saneCount--;
+            g_divSickCount.innerHTML = g_sickCount;
+            g_divSaneCount.innerHTML = g_saneCount;
+        }
+    } else {
+        if (this.sick && !sick) {
+            g_sickMaskedCount--;
+            g_saneMaskedCount++;
+            g_divSickMaskedCount.innerHTML = g_sickMaskedCount;
+            g_divSaneMaskedCount.innerHTML = g_saneMaskedCount;
+        } else if (!this.sick && sick) {
+            g_sickMaskedCount++;
+            g_saneMaskedCount--;
+            g_divSickMaskedCount.innerHTML = g_sickMaskedCount;
+            g_divSaneMaskedCount.innerHTML = g_saneMaskedCount;
+        }
+    }
+    this.sick = sick;
+    this.updateColor();
+};
+
+Character.prototype.setMasked = function(masked) {
+    if (!this.sick) {
+        if (this.masked && !masked) {
+            g_saneMaskedCount--;
+            g_saneCount++;
+            g_divSaneMaskedCount.innerHTML = g_saneMaskedCount;
+            g_divSaneCount.innerHTML = g_saneCount;
+        } else if (!this.masked && masked) {
+            g_saneMaskedCount++;
+            g_saneCount--;
+            g_divSaneMaskedCount.innerHTML = g_saneMaskedCount;
+            g_divSaneCount.innerHTML = g_saneCount;
+        }
+    } else {
+        if (this.masked && !masked) {
+            g_sickMaskedCount--;
+            g_sickCount++;
+            g_divSickMaskedCount.innerHTML = g_sickMaskedCount;
+            g_divSickCount.innerHTML = g_sickCount;
+        } else if (!this.masked && masked) {
+            g_sickMaskedCount++;
+            g_sickCount--;
+            g_divSickMaskedCount.innerHTML = g_sickMaskedCount;
+            g_divSickCount.innerHTML = g_sickCount;
+        }
+
+    }
+    this.masked = masked;
+    this.updateColor();
 };
 
 Character.prototype.isNear = function(other) {
@@ -122,6 +176,7 @@ Character.prototype.reenter = function() {
     this.speed_x = this.m_Dir[0] * speed;
     this.speed_y = this.m_Dir[1] * speed;
     this.setSick(false);
+    this.setMasked(false);
 }
 
 let g_characters = new Array();
@@ -135,7 +190,8 @@ const g_max_distance_contamination = 15;
 const g_distance_mask = 30;
 const g_colorSane = 'gray';
 const g_colorSick = 'yellow';
-const g_colorMasked = 'red';
+const g_colorSaneMasked = 'red';
+const g_colorSickMasked = 'orange';
 
 function findPos(obj) {
     var curleft = curtop = 0;
@@ -151,7 +207,7 @@ function findPos(obj) {
 function mask(event) {
     for (character of g_characters) {
         if (character.isNearPosition(event.clientX, event.clientY, g_distance_mask)) {
-            character.setMasked();
+            character.setMasked(true);
         }
     }
 }
@@ -162,7 +218,13 @@ function start()
     g_audioTheme1.play();
     g_Div = document.getElementById("bigdiv");
     g_divSickCount = document.getElementById("sickCount");
-    g_sickCount = 1;
+    g_divSickMaskedCount = document.getElementById("sickMaskedCount");
+    g_divSaneMaskedCount = document.getElementById("saneMaskedCount");
+    g_divSaneCount = document.getElementById("saneCount");
+    g_saneCount = 912;
+    g_sickCount = 0;
+    g_saneMaskedCount = 0;
+    g_sickMaskedCount = 0;
     g_nHeightDiv = g_Div.clientHeight;
     g_nWidthDiv = g_Div.clientWidth;
     g_perimeterLength = 2 * g_nHeightDiv + 2 * g_nWidthDiv;
@@ -179,11 +241,9 @@ function start()
 }
 
 function removeAll(cell) {
-    if ( cell.hasChildNodes() )
-    {
-        while ( cell.childNodes.length >= 1 )
-        {
-            cell.removeChild( cell.firstChild );       
+    if (cell.hasChildNodes()) {
+        while ( cell.childNodes.length >= 1 ) {
+            cell.removeChild(cell.firstChild);
         } 
     }
 }
@@ -197,10 +257,10 @@ function createRandomCharacter() {
 function restart() {
     removeAll(g_Div);
     let patient0 = createRandomCharacter();
-    patient0.setSick(true);
-    for (let iCharacter = 0; iCharacter < 911; iCharacter++) {
+    for (let iCharacter = 0; iCharacter < g_saneCount - 1; iCharacter++) {
         createRandomCharacter();
     }
+    patient0.setSick(true);
 }
 
 function createCharacter(x, y) {
