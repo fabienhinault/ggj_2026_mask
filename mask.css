@@ -26,3 +26,20 @@
     left: 10px;
     color: gray;
 }
+
+#round {
+    position: absolute;
+    top: 160px;
+    left: 10px;
+    color: white;
+}
+
+#virusWon.playing {
+    display: none;
+}
+
+#virusWon.virusWon {
+    position: absolute;
+    top: 100px;
+    left: 100px;
+}

@@ -1,16 +1,12 @@
-function Round(last)
-{
-    if(last){
+function Round(last) {
+    if (last) {
         this.n = last.n + 1;
-        this.m_dSlowSpeed = last.m_dSlowSpeed + 3/1000;
-        var limRad = 20;
-        this.m_dRadFast = limRad + ((last.m_dRadFast - limRad) * 0.80);
+        this.max_distance_contamination = last.max_distance_contamination * 1.1;
     }
     else
     {
         this.n = 1;
-        this.m_dSlowSpeed = 35/1000; // in pixels/millisecond
-        this.m_dRadFast = 100; // in pixels. If dog is nearer, go fast.
+        this.max_distance_contamination = 5;
     }
     this.won = undefined;
     document.getElementById("round").innerHTML = this.n;
@@ -143,7 +139,7 @@ Character.prototype.setMasked = function(masked) {
 };
 
 Character.prototype.isNear = function(other) {
-    return this.isNearPosition(other.m_x, other.m_y, g_max_distance_contamination);
+    return this.isNearPosition(other.m_x, other.m_y, g_round.max_distance_contamination);
 };
 
 Character.prototype.isNearPosition = function(x, y, distance) {
@@ -186,7 +182,6 @@ const g_delay = 40;
 let dart;
 const g_speed_min = 20/1000;
 const g_speed_max = 2 * g_speed_min;
-const g_max_distance_contamination = 15;
 const g_distance_mask = 30;
 const g_colorSane = 'gray';
 const g_colorSick = 'yellow';
@@ -221,21 +216,17 @@ function start()
     g_divSickMaskedCount = document.getElementById("sickMaskedCount");
     g_divSaneMaskedCount = document.getElementById("saneMaskedCount");
     g_divSaneCount = document.getElementById("saneCount");
-    g_saneCount = 912;
-    g_sickCount = 0;
-    g_saneMaskedCount = 0;
-    g_sickMaskedCount = 0;
+    g_imgVirusWon = document.getElementById("virusWon");
     g_nHeightDiv = g_Div.clientHeight;
     g_nWidthDiv = g_Div.clientWidth;
     g_perimeterLength = 2 * g_nHeightDiv + 2 * g_nWidthDiv;
     g_posDiv = findPos(g_Div);
     g_nLeftDiv = g_posDiv[0];
     g_nTopDiv = g_posDiv[1];
-    
+
+    g_round = new Round();
+
     restart();
-    
-    g_handlerTimeout = setTimeout("update();", g_delay);
-    g_timeLastMove = (new Date()).getTime();
 
     g_Div.addEventListener('click', mask);
 }
@@ -256,11 +247,18 @@ function createRandomCharacter() {
 
 function restart() {
     removeAll(g_Div);
+    g_saneCount = 912;
+    g_sickCount = 0;
+    g_saneMaskedCount = 0;
+    g_sickMaskedCount = 0;
     let patient0 = createRandomCharacter();
     for (let iCharacter = 0; iCharacter < g_saneCount - 1; iCharacter++) {
         createRandomCharacter();
     }
     patient0.setSick(true);
+    g_imgVirusWon.setAttribute('class', 'playing');
+    g_timeLastMove = (new Date()).getTime();
+    g_handlerTimeout = setTimeout("update();", g_delay);
 }
 
 function createCharacter(x, y) {
@@ -274,17 +272,28 @@ function createCharacter(x, y) {
 function createLittleDiv(x, y) {
     var littleDiv = document.createElement('div');
     littleDiv.style.background = g_colorSane;
-    littleDiv.style.width = '1px';
-    littleDiv.style.height = '1px';
-    littleDiv.style.left = x - .5 + 'px';;
-    littleDiv.style.top = y - .5 + 'px';
+    littleDiv.style.width = '3px';
+    littleDiv.style.height = '3px';
+    littleDiv.style.left = x - 1.5 + 'px';;
+    littleDiv.style.top = y - 1.5 + 'px';
     littleDiv.style.position = 'absolute';
     return littleDiv;
 }
 
 function update()
 {
-  clearTimeout(g_handlerTimeout);
+  //clearTimeout(g_handlerTimeout);
+  if (g_sickCount > 200) {
+    g_divSickCount.innerHTML = g_sickCount;
+    g_imgVirusWon.setAttribute('class', 'virusWon');
+    g_Div.removeEventListener('click', mask);
+    return;
+  }
+  if (g_sickCount == 0) {
+    g_round = new Round(g_round);
+    restart();
+    return;
+  }
   g_handlerTimeout = setTimeout("update();", g_delay);
   var time = (new Date()).getTime();
   var elapsedTime = time - g_timeLastMove;
@@ -308,13 +317,6 @@ function update()
         }
     }
   }
+
 }
-
-
-function addDart(evt) {
-    g_characters.push(dart);
-    document.removeEventListener('keypress', addDart);
-}
-
-document.addEventListener('keypress', addDart);
 
